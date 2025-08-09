@@ -1,4 +1,5 @@
 {
   "python.analysis.extraPaths": ["./timely"],
   "python.autoComplete.extraPaths": ["./timely"],
+  "cSpell.words": ["auditlog", "waitlist"]
 }

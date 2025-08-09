@@ -4,4 +4,3 @@ from django.apps import AppConfig
 class DjangoTimelyConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "django_timely"
-    label = "timely"
