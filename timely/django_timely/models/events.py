@@ -97,7 +97,7 @@ class EventBase(models.Model):
     )
     "Policy for booking this event. Choices are defined in `EventBookingPolicy`"
 
-    deposit_amount = models.FloatField(
+    deposit = models.FloatField(
         verbose_name="Deposit amount",
         null=True,
         blank=True,
@@ -107,6 +107,14 @@ class EventBase(models.Model):
         ),
     )
     "The deposit amount required to reserve a spot for this event, if applicable."
+
+    price = models.FloatField(
+        verbose_name="Event price",
+        null=True,
+        blank=True,
+        help_text="The price for the event, if applicable.",
+    )
+    "The price for the event, if applicable."
 
     refundable = models.BooleanField(
         verbose_name="Refundable",
@@ -118,6 +126,17 @@ class EventBase(models.Model):
     )
     """Indicates whether payments (such as deposits or fees) are refundable if the
     booking is cancelled."""
+
+    refundable_before = models.DateTimeField(
+        verbose_name="Refundable before",
+        null=True,
+        blank=True,
+        help_text=(
+            "The date and time before which a refund is allowed if the booking is "
+            "cancelled."
+        ),
+    )
+    "The date and time before which a refund is allowed if the booking is cancelled."
 
     access_level = models.CharField(
         verbose_name="Access level",
@@ -157,20 +176,13 @@ class EventType(EventBase):
 
     @classmethod
     def populate_defaults(cls):
-        defaults = [
-            {
-                "name": "Open slot",
-            },
-            {
-                "name": "Reserved slot",
-                "requires_confirmation": True,
-                "booking_policy": cls.EventBookingPolicy.FREE,
-                "access_level": cls.EventAccessLevel.RESTRICTED,
-            },
-        ]
-
-        objs = [cls(**kwargs) for kwargs in defaults]
-        cls.objects.bulk_create(objs, ignore_conflicts=True)
+        cls.objects.get_or_create(name="Open slot")
+        cls.objects.get_or_create(
+            name="Reserved slot",
+            requires_confirmation=True,
+            booking_policy=cls.EventBookingPolicy.FREE,
+            access_level=cls.EventAccessLevel.RESTRICTED,
+        )
 
 
 class Event(EventBase):
@@ -219,7 +231,9 @@ class Event(EventBase):
         null=True,
         blank=True,
         on_delete=models.RESTRICT,
+        help_text="Select the venue where this event will take place.",
     )
+    "The venue where this event will take place."
 
     def __str__(self):
         return f"{self.name}: {self.start} -> {self.end}"
@@ -229,6 +243,32 @@ class Event(EventBase):
             raise PermissionDenied("Cannot save a locked event")
 
         return super().save(*args, **kwargs)
+    
+    @property
+    def presenters(self):
+        """Get all users with presenter role for this event."""
+        from .bookings import EventParticipant
+        return EventParticipant.objects.filter(
+            event=self, 
+            role=EventParticipant.Role.PRESENTER
+        )
+    
+    @property
+    def instructors(self):
+        """Get all users with instructor role for this event."""
+        from .bookings import EventParticipant
+        return EventParticipant.objects.filter(
+            event=self, 
+            role=EventParticipant.Role.INSTRUCTOR
+        )
+    
+    @property
+    def primary_presenter(self):
+        """Get the first confirmed presenter for this event."""
+        presenter = self.presenters.filter(
+            status='confirmed'
+        ).first()
+        return presenter.user if presenter else None
 
     @classmethod
     def populate_defaults(cls):

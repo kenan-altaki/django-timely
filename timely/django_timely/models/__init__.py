@@ -1,6 +1,6 @@
 import logging
 
-from .assets import Asset, AssetGroup, Venue
+from .assets import Asset, AssetType, AssetGroup, Venue
 from .bookings import BookingRequest, EventParticipant, EventParticipantAsset
 from .events import Event, EventType
 
@@ -19,6 +19,7 @@ try:
             Event,
             EventType,
             Asset,
+            AssetType,
             AssetGroup,
             Venue,
             BookingRequest,

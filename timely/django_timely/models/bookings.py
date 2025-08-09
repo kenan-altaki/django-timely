@@ -31,22 +31,46 @@ class BookingRequest(models.Model):
 
 
 class EventParticipant(models.Model):
+    class Role(models.TextChoices):
+        ATTENDEE = "attendee", "Attendee"
+        INSTRUCTOR = "instructor", "Instructor"
+        PRESENTER = "presenter", "Presenter"
+        FACILITATOR = "facilitator", "Facilitator"
+        ASSISTANT = "assistant", "Assistant"
+
+    class Status(models.TextChoices):
+        INVITED = "invited", "Invited"
+        CONFIRMED = "confirmed", "Confirmed"
+        CANCELLED = "cancelled", "Cancelled"
+
     event = models.ForeignKey(Event, on_delete=models.RESTRICT)
     user = models.ForeignKey(get_user_model(), on_delete=models.RESTRICT)
     role = models.CharField(
-        choices=[("compulsory", "Compulsory"), ("optional", "Optional")]
+        max_length=12,
+        choices=Role.choices,
+        default=Role.ATTENDEE,
+        help_text="The role of this participant in the event",
     )
     status = models.CharField(
-        choices=[
-            ("invited", "Invited"),
-            ("confirmed", "Confirmed"),
-            ("cancelled", "Cancelled"),
-        ]
+        max_length=10,
+        choices=Status.choices,
+        default=Status.INVITED,
+        help_text="The current status of this participant",
     )
+    assets = models.ManyToManyField(Asset, through="EventParticipantAsset")
+
+    def __str__(self):
+        return f"{self.user} - {self.get_role_display()} for {self.event}"
 
 
 class EventParticipantAsset(models.Model):
-    event = models.ForeignKey(Event, on_delete=models.RESTRICT)
-    user = models.ForeignKey(get_user_model(), on_delete=models.RESTRICT)
+    participant = models.ForeignKey(EventParticipant, on_delete=models.RESTRICT)
     asset = models.ForeignKey(Asset, on_delete=models.RESTRICT)
-    is_shared = models.BooleanField(default=False)
+    shared = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["participant", "asset"], name="unique_participant_asset"
+            )
+        ]
