@@ -41,6 +41,9 @@ INSTALLED_APPS = [
     "django_timely",
 ]
 
+if DEBUG:
+    INSTALLED_APPS.append('django_extensions')
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",

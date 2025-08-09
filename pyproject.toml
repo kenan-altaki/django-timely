@@ -40,4 +40,9 @@ Issues = "https://github.com/me/spam/issues"
 Changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
 
 [dependency-groups]
-dev = ["pre-commit>=4.2.0", "ruff>=0.12.7"]
+dev = [
+    "django-extensions>=4.1",
+    "pre-commit>=4.2.0",
+    "pydot>=4.0.1",
+    "ruff>=0.12.7",
+]
