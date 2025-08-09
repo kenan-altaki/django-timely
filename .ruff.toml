@@ -1,0 +1,17 @@
+target-version = "py313"
+src = ["timely"]
+
+[lint.isort]
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "django",
+    "data-science",
+    "first-party",
+    "local-folder",
+]
+
+[lint.isort.sections]
+"django" = ["django"]
+"data-science" = ["pandas", "numpy"]

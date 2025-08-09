@@ -1,0 +1,40 @@
+[project]
+name = "django-timely"
+version = "0.1.0"
+description = "A flexible and extensible scheduling and booking system for Django."
+
+readme = "README.md"
+license = { text = "MIT" }
+
+requires-python = ">=3.10"
+
+authors = [{ name = "Kenan Altaki" }]
+maintainers = [{ name = "Kenan Altaki" }]
+keywords = ["django", "booking", "scheduler", "recurrence", "calendar"]
+
+classifiers = [
+    # https://pypi.org/classifiers/
+    "Development Status :: 1 - Planning",
+    "Environment :: Web Environment",
+    "Framework :: Django",
+    "Framework :: Django :: 5",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Scheduling",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+]
+
+dependencies = ["django>=5.2.4"]
+
+[project.urls]
+Homepage = "https://example.com"
+Documentation = "https://readthedocs.org"
+Repository = "https://github.com/me/spam.git"
+Issues = "https://github.com/me/spam/issues"
+Changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
+
+[dependency-groups]
+dev = ["pre-commit>=4.2.0", "ruff>=0.12.7"]
