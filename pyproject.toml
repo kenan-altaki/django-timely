@@ -27,7 +27,10 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
 ]
 
-dependencies = ["django>=5.2.4"]
+dependencies = [
+    "django>=5.2.4",
+    "django-recurrence>=1.11.1",
+]
 
 [project.urls]
 Homepage = "https://example.com"

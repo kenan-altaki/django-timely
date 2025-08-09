@@ -2,6 +2,8 @@ from django.core.exceptions import PermissionDenied
 from django.db import models
 from django.utils import timezone
 
+from recurrence.fields import RecurrenceField
+
 from .assets import Venue
 
 
@@ -53,7 +55,7 @@ class EventBase(models.Model):
     )
     "Allow users to join a waitlist if the event is full."
 
-    recurrence_rule = models.TextField(
+    recurrence_rule = RecurrenceField(
         verbose_name="Recurrence rule",
         null=True,
         blank=True,

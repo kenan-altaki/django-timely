@@ -44,6 +44,35 @@ class Asset(models.Model):
                 cls.objects.get_or_create(name=_name, type=asset_type)
 
 
+class AssetAvailability(models.Model):
+    class AvailabilityType(models.TextChoices):
+        OPEN = "O", "Open"
+        CLOSED = "C", "Closed"
+
+    asset = models.ForeignKey(
+        Asset,
+        on_delete=models.RESTRICT,
+        related_name="availability_slots",
+        related_query_name="availability_slot",
+        verbose_name="Asset",
+        help_text="Asset this availability slot applies to.",
+    )
+    "Asset this availability slot applies to."
+
+    type = models.CharField(
+        verbose_name="Availability type",
+        choices=AvailabilityType,
+        help_text="Type of availability slot (e.g., open, maintenance, reserved).",
+    )
+    "Type of availability slot (e.g., open, maintenance, reserved)."
+
+    data = models.TextField(
+        verbose_name="Recurrence rule",
+        help_text="Recurrence rule in iCalendar `RFC 5545` format.",
+    )
+    "Recurrence rule in iCalendar `RFC 5545` format."
+
+
 class AssetGroup(models.Model):
     name = models.CharField(max_length=100)
     assets = models.ManyToManyField(Asset, related_name="asset_groups")
