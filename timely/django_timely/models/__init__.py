@@ -1,7 +1,8 @@
 import logging
 
 from .assets import Asset, AssetType, AssetGroup, Venue
-from .bookings import BookingRequest, EventParticipant, EventParticipantAsset
+# from .bookings import BookingRequest, EventParticipant, EventParticipantAsset
+from .bookings import EventParticipant, EventParticipantAsset
 from .events import Event, EventType
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ try:
             AssetType,
             AssetGroup,
             Venue,
-            BookingRequest,
+            # BookingRequest,
             EventParticipant,
             EventParticipantAsset,
         ]

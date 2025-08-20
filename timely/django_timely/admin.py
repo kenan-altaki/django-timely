@@ -4,7 +4,7 @@ from .models import (
     AssetType,
     Asset,
     AssetGroup,
-    BookingRequest,
+    # BookingRequest,
     Event,
     EventParticipant,
     EventParticipantAsset,
@@ -52,9 +52,9 @@ class VenueAdmin(admin.ModelAdmin):
     pass
 
 
-@admin.register(BookingRequest)
-class BookingRequestAdmin(admin.ModelAdmin):
-    pass
+# @admin.register(BookingRequest)
+# class BookingRequestAdmin(admin.ModelAdmin):
+#     pass
 
 
 @admin.register(EventParticipant)
