@@ -1,4 +1,11 @@
 from django.db import models
+from datetime import datetime
+from recurrence.fields import RecurrenceField
+from recurrence import Recurrence
+
+from django.utils import timezone
+
+# from .bookings import VenueAvailability
 
 
 class AssetType(models.Model):
@@ -89,9 +96,52 @@ class Venue(models.Model):
         blank=True,
         help_text="Fixed assets located at this venue",
     )
+    # availability = Recurrence(
+    #     rrules=[Rule(WEEKLY, byday=[MO])],#,recurrence.TU,recurrence.WE,recurrence.TH,recurrence.FR])],
+    #     include_dtstart=False)
+
+    availability = models.ForeignKey("bookings.VenueAvailability", on_delete=models.RESTRICT)
+    recurrence_rule = availability.get_rule()
+
 
     def __str__(self):
         return self.name
+    
+    def test_func(self, year, month):
+        from pprint import pprint
+
+        days_in_month = self.det_final_day(year, month)
+        dtend = timezone.datetime(year,month,days_in_month,23,59,59,999)
+
+        # if dtend < timezone.now():
+        #     print("Date is in the past")
+        #     return None
+        
+        dtstart = timezone.datetime(year,month,1,0,0,0,0)
+        date_range = self.recurrence_rule.between(dtstart, dtend, dtstart=dtstart, inc=True)
+        pprint(date_range)
+
+    def det_final_day(self, year, month):
+        from calendar import monthrange
+
+        return monthrange(year, month)[1]
+
+    def month_av(self, month, year):
+        final_day = self.det_final_day(year=year, month=month)
+
+        if (year > datetime.now().year) or (year == datetime.now().year and month > datetime.now().month):
+            start_date = datetime.strptime(f"{month}/1;{year}", "%m/%d;%Y")
+            end_date = datetime.strptime(f"{month}/{final_day};{year}", "%m/%d;%Y")
+        elif (month < datetime.now().month) or (year < datetime.now().year):
+            print("That date has long passed, buddy.")
+            return
+        else:
+            start_date = datetime.now()
+            end_date = datetime.strptime(f"{datetime.now().month}/{final_day};{datetime.now().year}", "%m/%d;%Y")
+        date_range = self.availability.occurrences(dtstart=start_date,dtend=end_date)
+        for each in date_range:
+            # if each.date().weekday() == self.availability.rrules. # TODO: Continue here
+            print(each.date())
 
     @classmethod
     def populate_defaults(cls):
