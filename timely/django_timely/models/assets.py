@@ -101,7 +101,7 @@ class Venue(models.Model):
     #     include_dtstart=False)
 
     availability = models.ForeignKey("bookings.VenueAvailability", on_delete=models.RESTRICT)
-    recurrence_rule = availability.get_rule()
+    # recurrence_rule = availability.get_rule()
 
 
     def __str__(self):
