@@ -34,6 +34,41 @@ class Availability(models.Model):
         abstract = True
 
     @classmethod
+    def get_av_per_month(cls, year, month):
+        days_in_month = cls.det_final_day(year, month)
+        dtstart = timezone.datetime(year, month, 1, 0, 0, 0, 0)
+        dtend = timezone.datetime(year, month, days_in_month, 23, 59, 59, 999)
+
+        all_occurrences = []
+        for each in cls.availabilities.all():
+            for x in each.recurrence_rule.between(
+                dtstart, dtend, dtstart=dtstart, inc=True
+            ):
+                all_occurrences.append(
+                    TimePeriod(
+                        start_time=x.replace(
+                            hour=each.start_time.hour,
+                            minute=each.start_time.minute,
+                            second=each.start_time.second,
+                        ),
+                        end_time=x.replace(
+                            hour=each.end_time.hour,
+                            minute=each.end_time.minute,
+                            second=each.end_time.second,
+                        ),
+                    )
+                )
+
+        all_occurrences.sort(key=lambda x: x.start_time)
+        return all_occurrences
+
+    @classmethod
+    def det_final_day(cls, year, month):
+        from calendar import monthrange
+
+        return monthrange(year, month)[1]
+
+    @classmethod
     def availability_overlap(cls, *items):
         for item in items:
             assert hasattr(item, "availabilities"), (
@@ -87,39 +122,6 @@ class Asset(models.Model):
             for _name in _lst:
                 cls.objects.get_or_create(name=_name, type=asset_type)
 
-    def get_av_per_month(self, year, month):
-        days_in_month = self.det_final_day(year, month)
-        dtstart = timezone.datetime(year, month, 1, 0, 0, 0, 0)
-        dtend = timezone.datetime(year, month, days_in_month, 23, 59, 59, 999)
-
-        all_occurrences = []
-        for each in self.availabilities.all():
-            for x in each.recurrence_rule.between(
-                dtstart, dtend, dtstart=dtstart, inc=True
-            ):
-                all_occurrences.append(
-                    TimePeriod(
-                        start_time=x.replace(
-                            hour=each.start_time.hour,
-                            minute=each.start_time.minute,
-                            second=each.start_time.second,
-                        ),
-                        end_time=x.replace(
-                            hour=each.end_time.hour,
-                            minute=each.end_time.minute,
-                            second=each.end_time.second,
-                        ),
-                    )
-                )
-
-        all_occurrences.sort(key=lambda x: x.start_time)
-        return all_occurrences
-
-    def det_final_day(self, year, month):
-        from calendar import monthrange
-
-        return monthrange(year, month)[1]
-
 
 class AssetAvailability(Availability):
     asset = models.ForeignKey(
@@ -152,39 +154,6 @@ class Venue(models.Model):
 
     def __str__(self):
         return self.name
-
-    def get_av_per_month(self, year, month):
-        days_in_month = self.det_final_day(year, month)
-        dtstart = timezone.datetime(year, month, 1, 0, 0, 0, 0)
-        dtend = timezone.datetime(year, month, days_in_month, 23, 59, 59, 999)
-
-        all_occurrences = []
-        for each in self.availabilities.all():
-            for x in each.recurrence_rule.between(
-                dtstart, dtend, dtstart=dtstart, inc=True
-            ):
-                all_occurrences.append(
-                    TimePeriod(
-                        start_time=x.replace(
-                            hour=each.start_time.hour,
-                            minute=each.start_time.minute,
-                            second=each.start_time.second,
-                        ),
-                        end_time=x.replace(
-                            hour=each.end_time.hour,
-                            minute=each.end_time.minute,
-                            second=each.end_time.second,
-                        ),
-                    )
-                )
-
-        all_occurrences.sort(key=lambda x: x.start_time)
-        return all_occurrences
-
-    def det_final_day(self, year, month):
-        from calendar import monthrange
-
-        return monthrange(year, month)[1]
 
 
 class VenueAvailability(Availability):
