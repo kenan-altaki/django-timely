@@ -2,7 +2,7 @@ import logging
 
 from .assets import Asset, AssetType, AssetGroup, Venue
 # from .bookings import BookingRequest, EventParticipant, EventParticipantAsset
-from .bookings import EventParticipant, EventParticipantAsset
+from .bookings import EventParticipant, EventParticipantAsset, VenueAvailability
 from .events import Event, EventType
 
 logger = logging.getLogger(__name__)
@@ -26,6 +26,7 @@ try:
             # BookingRequest,
             EventParticipant,
             EventParticipantAsset,
+            VenueAvailability,
         ]
         for _model in models_to_audit_log:
             _model_name = _model.__class__.__name__

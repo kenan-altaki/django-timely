@@ -4,7 +4,6 @@ from django.db import models
 from .assets import Asset, Venue
 from .events import Event
 
-from datetime import time
 from recurrence.fields import RecurrenceField
 
 
@@ -80,8 +79,12 @@ class EventParticipantAsset(models.Model):
 
 
 class VenueAvailability(models.Model):
-    name = models.CharField(max_length=127)
-    venue = models.ForeignKey(Venue, on_delete=models.RESTRICT)
+    venue = models.ForeignKey(
+        Venue,
+        on_delete=models.RESTRICT,
+        related_name="availabilities",
+        related_query_name="availability",
+    )
 
     recurrence_rule = RecurrenceField(
         verbose_name="Recurrence rule",
@@ -91,13 +94,11 @@ class VenueAvailability(models.Model):
         include_dtstart=False,
     )
 
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
     def get_rule(self):
         return self.recurrence_rule
 
-
-class TimePeriod(models.Model):
-    name = models.CharField(max_length=127)
-    recurrence = models.ForeignKey(VenueAvailability, on_delete=models.RESTRICT)
-    
-    start_time = time(0,0,0) # Default values
-    end_time = time(23,59,59) # Default values
+    def __str__(self):
+        return self.venue.name

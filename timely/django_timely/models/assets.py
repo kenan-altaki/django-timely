@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from django.db import models
 from datetime import datetime
 from recurrence.fields import RecurrenceField
@@ -90,7 +92,7 @@ class AssetGroup(models.Model):
 
 class Venue(models.Model):
     name = models.CharField(max_length=128)
-    location = models.CharField(max_length=128)
+    location = models.CharField(max_length=128, null=True, blank=True)
     assets = models.ManyToManyField(
         Asset,
         blank=True,
@@ -100,26 +102,56 @@ class Venue(models.Model):
     #     rrules=[Rule(WEEKLY, byday=[MO])],#,recurrence.TU,recurrence.WE,recurrence.TH,recurrence.FR])],
     #     include_dtstart=False)
 
-    availability = models.ForeignKey("bookings.VenueAvailability", on_delete=models.RESTRICT)
+    # availability = models.ForeignKey(
+    #     "django_timely.VenueAvailability",
+    #     on_delete=models.RESTRICT,
+    #     related_name="venues",
+    #     related_query_name="venue",
+    # )
     # recurrence_rule = availability.get_rule()
-
 
     def __str__(self):
         return self.name
-    
+
     def test_func(self, year, month):
         from pprint import pprint
 
         days_in_month = self.det_final_day(year, month)
-        dtend = timezone.datetime(year,month,days_in_month,23,59,59,999)
+        dtend = timezone.datetime(year, month, days_in_month, 23, 59, 59, 999)
 
         # if dtend < timezone.now():
         #     print("Date is in the past")
         #     return None
-        
-        dtstart = timezone.datetime(year,month,1,0,0,0,0)
-        date_range = self.recurrence_rule.between(dtstart, dtend, dtstart=dtstart, inc=True)
+
+        dtstart = timezone.datetime(year, month, 1, 0, 0, 0, 0)
+        date_range = self.recurrence_rule.between(
+            dtstart, dtend, dtstart=dtstart, inc=True
+        )
         pprint(date_range)
+
+    def get_av_per_month(self, year, month):
+        days_in_month = self.det_final_day(year, month)
+        dtstart = timezone.datetime(year, month, 1, 0, 0, 0, 0)
+        dtend = timezone.datetime(year, month, days_in_month, 23, 59, 59, 999)
+        all_avs = self.availabilities.all()
+
+        all_occurrences = []
+        for each in all_avs:
+            # all_occurrences.extend(each.recurrence_rule.between(dtstart, dtend, dtstart=dtstart, inc=True))
+            each_occurrence = each.recurrence_rule.between(
+                dtstart, dtend, dtstart=dtstart, inc=True
+            )
+            for x in each_occurrence:
+                # all_occurrences.append(x.replace(hour=each.start_time.hour))
+                all_occurrences.append(
+                    TimePeriod(
+                        start_time=x.replace(hour=each.start_time.hour, minute=each.start_time.minute, second=each.start_time.second),
+                        end_time=x.replace(hour=each.end_time.hour, minute=each.end_time.minute, second=each.end_time.second),
+                    )
+                )
+
+        all_occurrences.sort(key=lambda x: x.start_time)
+        return all_occurrences
 
     def det_final_day(self, year, month):
         from calendar import monthrange
@@ -129,7 +161,9 @@ class Venue(models.Model):
     def month_av(self, month, year):
         final_day = self.det_final_day(year=year, month=month)
 
-        if (year > datetime.now().year) or (year == datetime.now().year and month > datetime.now().month):
+        if (year > datetime.now().year) or (
+            year == datetime.now().year and month > datetime.now().month
+        ):
             start_date = datetime.strptime(f"{month}/1;{year}", "%m/%d;%Y")
             end_date = datetime.strptime(f"{month}/{final_day};{year}", "%m/%d;%Y")
         elif (month < datetime.now().month) or (year < datetime.now().year):
@@ -137,8 +171,10 @@ class Venue(models.Model):
             return
         else:
             start_date = datetime.now()
-            end_date = datetime.strptime(f"{datetime.now().month}/{final_day};{datetime.now().year}", "%m/%d;%Y")
-        date_range = self.availability.occurrences(dtstart=start_date,dtend=end_date)
+            end_date = datetime.strptime(
+                f"{datetime.now().month}/{final_day};{datetime.now().year}", "%m/%d;%Y"
+            )
+        date_range = self.availability.occurrences(dtstart=start_date, dtend=end_date)
         for each in date_range:
             # if each.date().weekday() == self.availability.rrules. # TODO: Continue here
             print(each.date())
@@ -148,3 +184,15 @@ class Venue(models.Model):
         cls.objects.get_or_create(name="Main arena", location="Stables")
         cls.objects.get_or_create(name="Small arena", location="Stables")
         cls.objects.get_or_create(name="Round arena", location="Stables")
+
+
+@dataclass
+class TimePeriod:
+    start_time: timezone.datetime
+    end_time: timezone.datetime
+
+    def __str__(self):
+        return f"{self.start_time} ==> {self.end_time}"
+
+    def __repr__(self):
+        return f"{self.start_time} ==> {self.end_time}"

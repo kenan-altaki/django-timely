@@ -10,6 +10,7 @@ from .models import (
     EventParticipantAsset,
     EventType,
     Venue,
+    VenueAvailability,
 )
 
 EVENT_BASE_LIST_DISPLAY = [
@@ -47,11 +48,6 @@ class AssetGroupAdmin(admin.ModelAdmin):
     pass
 
 
-@admin.register(Venue)
-class VenueAdmin(admin.ModelAdmin):
-    pass
-
-
 # @admin.register(BookingRequest)
 # class BookingRequestAdmin(admin.ModelAdmin):
 #     pass
@@ -65,3 +61,15 @@ class EventParticipantAdmin(admin.ModelAdmin):
 @admin.register(EventParticipantAsset)
 class EventParticipantAssetAdmin(admin.ModelAdmin):
     pass
+
+
+class AvailabilityInline(admin.StackedInline):
+    model = VenueAvailability
+    extra = 0
+
+
+@admin.register(Venue)
+class VenueAdmin(admin.ModelAdmin):
+    inlines = [
+        AvailabilityInline,
+    ]
