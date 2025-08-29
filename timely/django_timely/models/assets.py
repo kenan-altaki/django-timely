@@ -6,6 +6,34 @@ from django.utils import timezone
 from recurrence.fields import RecurrenceField
 
 
+@dataclass
+class TimePeriod:
+    start_time: timezone.datetime
+    end_time: timezone.datetime
+
+    def __str__(self):
+        return f"{self.start_time} ==> {self.end_time}"
+
+    def __repr__(self):
+        return f"{self.start_time} ==> {self.end_time}"
+
+
+class Availability(models.Model):
+    recurrence_rule = RecurrenceField(
+        verbose_name="Recurrence rule",
+        null=True,
+        blank=True,
+        help_text="Recurrence rule in iCalendar `RFC 5545` format.",
+        include_dtstart=False,
+    )
+
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
+    class Meta:
+        abstract = True
+
+
 class AssetType(models.Model):
     name = models.CharField(max_length=128)
     is_active = models.BooleanField(default=True)
@@ -82,24 +110,13 @@ class Asset(models.Model):
         return monthrange(year, month)[1]
 
 
-class AssetAvailability(models.Model):
+class AssetAvailability(Availability):
     asset = models.ForeignKey(
         Asset,
         on_delete=models.RESTRICT,
         related_name="availabilities",
         related_query_name="availability",
     )
-
-    recurrence_rule = RecurrenceField(
-        verbose_name="Recurrence rule",
-        null=True,
-        blank=True,
-        help_text="Recurrence rule in iCalendar `RFC 5545` format.",
-        include_dtstart=False,
-    )
-
-    start_time = models.TimeField()
-    end_time = models.TimeField()
 
     def __str__(self):
         return self.asset.name
@@ -159,7 +176,7 @@ class Venue(models.Model):
         return monthrange(year, month)[1]
 
 
-class VenueAvailability(models.Model):
+class VenueAvailability(Availability):
     venue = models.ForeignKey(
         Venue,
         on_delete=models.RESTRICT,
@@ -167,28 +184,5 @@ class VenueAvailability(models.Model):
         related_query_name="availability",
     )
 
-    recurrence_rule = RecurrenceField(
-        verbose_name="Recurrence rule",
-        null=True,
-        blank=True,
-        help_text="Recurrence rule in iCalendar `RFC 5545` format.",
-        include_dtstart=False,
-    )
-
-    start_time = models.TimeField()
-    end_time = models.TimeField()
-
     def __str__(self):
         return self.venue.name
-
-
-@dataclass
-class TimePeriod:
-    start_time: timezone.datetime
-    end_time: timezone.datetime
-
-    def __str__(self):
-        return f"{self.start_time} ==> {self.end_time}"
-
-    def __repr__(self):
-        return f"{self.start_time} ==> {self.end_time}"
