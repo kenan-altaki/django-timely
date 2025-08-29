@@ -1,13 +1,9 @@
 from dataclasses import dataclass
 
 from django.db import models
-from datetime import datetime
-from recurrence.fields import RecurrenceField
-from recurrence import Recurrence
 
 from django.utils import timezone
-
-# from .bookings import VenueAvailability
+from recurrence.fields import RecurrenceField
 
 
 class AssetType(models.Model):
@@ -52,34 +48,61 @@ class Asset(models.Model):
             for _name in _lst:
                 cls.objects.get_or_create(name=_name, type=asset_type)
 
+    def get_av_per_month(self, year, month):
+        days_in_month = self.det_final_day(year, month)
+        dtstart = timezone.datetime(year, month, 1, 0, 0, 0, 0)
+        dtend = timezone.datetime(year, month, days_in_month, 23, 59, 59, 999)
+
+        all_occurrences = []
+        for each in self.availabilities.all():
+            for x in each.recurrence_rule.between(
+                dtstart, dtend, dtstart=dtstart, inc=True
+            ):
+                all_occurrences.append(
+                    TimePeriod(
+                        start_time=x.replace(
+                            hour=each.start_time.hour,
+                            minute=each.start_time.minute,
+                            second=each.start_time.second,
+                        ),
+                        end_time=x.replace(
+                            hour=each.end_time.hour,
+                            minute=each.end_time.minute,
+                            second=each.end_time.second,
+                        ),
+                    )
+                )
+
+        all_occurrences.sort(key=lambda x: x.start_time)
+        return all_occurrences
+
+    def det_final_day(self, year, month):
+        from calendar import monthrange
+
+        return monthrange(year, month)[1]
+
 
 class AssetAvailability(models.Model):
-    class AvailabilityType(models.TextChoices):
-        OPEN = "O", "Open"
-        CLOSED = "C", "Closed"
-
     asset = models.ForeignKey(
         Asset,
         on_delete=models.RESTRICT,
-        related_name="availability_slots",
-        related_query_name="availability_slot",
-        verbose_name="Asset",
-        help_text="Asset this availability slot applies to.",
+        related_name="availabilities",
+        related_query_name="availability",
     )
-    "Asset this availability slot applies to."
 
-    type = models.CharField(
-        verbose_name="Availability type",
-        choices=AvailabilityType,
-        help_text="Type of availability slot (e.g., open, maintenance, reserved).",
-    )
-    "Type of availability slot (e.g., open, maintenance, reserved)."
-
-    data = models.TextField(
+    recurrence_rule = RecurrenceField(
         verbose_name="Recurrence rule",
+        null=True,
+        blank=True,
         help_text="Recurrence rule in iCalendar `RFC 5545` format.",
+        include_dtstart=False,
     )
-    "Recurrence rule in iCalendar `RFC 5545` format."
+
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
+    def __str__(self):
+        return self.asset.name
 
 
 class AssetGroup(models.Model):
@@ -98,55 +121,32 @@ class Venue(models.Model):
         blank=True,
         help_text="Fixed assets located at this venue",
     )
-    # availability = Recurrence(
-    #     rrules=[Rule(WEEKLY, byday=[MO])],#,recurrence.TU,recurrence.WE,recurrence.TH,recurrence.FR])],
-    #     include_dtstart=False)
-
-    # availability = models.ForeignKey(
-    #     "django_timely.VenueAvailability",
-    #     on_delete=models.RESTRICT,
-    #     related_name="venues",
-    #     related_query_name="venue",
-    # )
-    # recurrence_rule = availability.get_rule()
 
     def __str__(self):
         return self.name
-
-    def test_func(self, year, month):
-        from pprint import pprint
-
-        days_in_month = self.det_final_day(year, month)
-        dtend = timezone.datetime(year, month, days_in_month, 23, 59, 59, 999)
-
-        # if dtend < timezone.now():
-        #     print("Date is in the past")
-        #     return None
-
-        dtstart = timezone.datetime(year, month, 1, 0, 0, 0, 0)
-        date_range = self.recurrence_rule.between(
-            dtstart, dtend, dtstart=dtstart, inc=True
-        )
-        pprint(date_range)
 
     def get_av_per_month(self, year, month):
         days_in_month = self.det_final_day(year, month)
         dtstart = timezone.datetime(year, month, 1, 0, 0, 0, 0)
         dtend = timezone.datetime(year, month, days_in_month, 23, 59, 59, 999)
-        all_avs = self.availabilities.all()
 
         all_occurrences = []
-        for each in all_avs:
-            # all_occurrences.extend(each.recurrence_rule.between(dtstart, dtend, dtstart=dtstart, inc=True))
-            each_occurrence = each.recurrence_rule.between(
+        for each in self.availabilities.all():
+            for x in each.recurrence_rule.between(
                 dtstart, dtend, dtstart=dtstart, inc=True
-            )
-            for x in each_occurrence:
-                # all_occurrences.append(x.replace(hour=each.start_time.hour))
+            ):
                 all_occurrences.append(
                     TimePeriod(
-                        start_time=x.replace(hour=each.start_time.hour, minute=each.start_time.minute, second=each.start_time.second),
-                        end_time=x.replace(hour=each.end_time.hour, minute=each.end_time.minute, second=each.end_time.second),
+                        start_time=x.replace(
+                            hour=each.start_time.hour,
+                            minute=each.start_time.minute,
+                            second=each.start_time.second,
+                        ),
+                        end_time=x.replace(
+                            hour=each.end_time.hour,
+                            minute=each.end_time.minute,
+                            second=each.end_time.second,
+                        ),
                     )
                 )
 
@@ -158,32 +158,28 @@ class Venue(models.Model):
 
         return monthrange(year, month)[1]
 
-    def month_av(self, month, year):
-        final_day = self.det_final_day(year=year, month=month)
 
-        if (year > datetime.now().year) or (
-            year == datetime.now().year and month > datetime.now().month
-        ):
-            start_date = datetime.strptime(f"{month}/1;{year}", "%m/%d;%Y")
-            end_date = datetime.strptime(f"{month}/{final_day};{year}", "%m/%d;%Y")
-        elif (month < datetime.now().month) or (year < datetime.now().year):
-            print("That date has long passed, buddy.")
-            return
-        else:
-            start_date = datetime.now()
-            end_date = datetime.strptime(
-                f"{datetime.now().month}/{final_day};{datetime.now().year}", "%m/%d;%Y"
-            )
-        date_range = self.availability.occurrences(dtstart=start_date, dtend=end_date)
-        for each in date_range:
-            # if each.date().weekday() == self.availability.rrules. # TODO: Continue here
-            print(each.date())
+class VenueAvailability(models.Model):
+    venue = models.ForeignKey(
+        Venue,
+        on_delete=models.RESTRICT,
+        related_name="availabilities",
+        related_query_name="availability",
+    )
 
-    @classmethod
-    def populate_defaults(cls):
-        cls.objects.get_or_create(name="Main arena", location="Stables")
-        cls.objects.get_or_create(name="Small arena", location="Stables")
-        cls.objects.get_or_create(name="Round arena", location="Stables")
+    recurrence_rule = RecurrenceField(
+        verbose_name="Recurrence rule",
+        null=True,
+        blank=True,
+        help_text="Recurrence rule in iCalendar `RFC 5545` format.",
+        include_dtstart=False,
+    )
+
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
+    def __str__(self):
+        return self.venue.name
 
 
 @dataclass

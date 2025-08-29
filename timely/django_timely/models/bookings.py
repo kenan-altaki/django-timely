@@ -1,10 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.db import models
 
-from .assets import Asset, Venue
+from .assets import Asset
 from .events import Event
 
-from recurrence.fields import RecurrenceField
 
 
 # class BookingRequest(models.Model):
@@ -78,27 +77,3 @@ class EventParticipantAsset(models.Model):
         ]
 
 
-class VenueAvailability(models.Model):
-    venue = models.ForeignKey(
-        Venue,
-        on_delete=models.RESTRICT,
-        related_name="availabilities",
-        related_query_name="availability",
-    )
-
-    recurrence_rule = RecurrenceField(
-        verbose_name="Recurrence rule",
-        null=True,
-        blank=True,
-        help_text="Recurrence rule in iCalendar `RFC 5545` format.",
-        include_dtstart=False,
-    )
-
-    start_time = models.TimeField()
-    end_time = models.TimeField()
-
-    def get_rule(self):
-        return self.recurrence_rule
-
-    def __str__(self):
-        return self.venue.name

@@ -1,8 +1,11 @@
 from django.contrib import admin
 
+from .models.assets import VenueAvailability
+
 from .models import (
     AssetType,
     Asset,
+    AssetAvailability,
     AssetGroup,
     # BookingRequest,
     Event,
@@ -10,7 +13,6 @@ from .models import (
     EventParticipantAsset,
     EventType,
     Venue,
-    VenueAvailability,
 )
 
 EVENT_BASE_LIST_DISPLAY = [
@@ -38,9 +40,17 @@ class AssetTypeAdmin(admin.ModelAdmin):
     list_display = ["name", "is_active"]
 
 
+class AssetAvailabilityInline(admin.StackedInline):
+    model = AssetAvailability
+    extra = 0
+
+
 @admin.register(Asset)
 class AssetAdmin(admin.ModelAdmin):
     list_display = ["name", "type", "is_active"]
+    inlines = [
+        AssetAvailabilityInline,
+    ]
 
 
 @admin.register(AssetGroup)
@@ -63,7 +73,7 @@ class EventParticipantAssetAdmin(admin.ModelAdmin):
     pass
 
 
-class AvailabilityInline(admin.StackedInline):
+class VenueAvailabilityInline(admin.StackedInline):
     model = VenueAvailability
     extra = 0
 
@@ -71,5 +81,5 @@ class AvailabilityInline(admin.StackedInline):
 @admin.register(Venue)
 class VenueAdmin(admin.ModelAdmin):
     inlines = [
-        AvailabilityInline,
+        VenueAvailabilityInline,
     ]
