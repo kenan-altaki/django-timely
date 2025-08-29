@@ -5,7 +5,6 @@ from .models import (
     AssetAvailability,
     AssetGroup,
     AssetType,
-    # BookingRequest,
     Event,
     EventParticipant,
     EventParticipantAsset,
@@ -55,11 +54,6 @@ class AssetAdmin(admin.ModelAdmin):
 @admin.register(AssetGroup)
 class AssetGroupAdmin(admin.ModelAdmin):
     pass
-
-
-# @admin.register(BookingRequest)
-# class BookingRequestAdmin(admin.ModelAdmin):
-#     pass
 
 
 @admin.register(EventParticipant)

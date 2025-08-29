@@ -72,10 +72,21 @@ class Availability(models.Model):
     def availability_overlap(cls, *items):
         for item in items:
             assert hasattr(item, "availabilities"), (
-                f"{item} does not have an `availability` attribute"
+                f"{item} does not have an `availability` attribute."
             )
 
         # Get availability for each item
+        item_list_length = len(items)
+        if item_list_length < 2:
+            pass  # Code for only one object
+        else:  # Implicitly asserted that item list has more than 1 object
+            pass
+
+        avs = [_x.get_availability for _x in items]
+
+        for i in range(item_list_length):
+            pass
+
         # Determine the overlap of all items
         # Return list of all overlapping TimePeriods
 
