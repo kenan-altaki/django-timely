@@ -1,12 +1,10 @@
 from django.contrib import admin
 
-from .models.assets import VenueAvailability
-
 from .models import (
-    AssetType,
     Asset,
     AssetAvailability,
     AssetGroup,
+    AssetType,
     # BookingRequest,
     Event,
     EventParticipant,
@@ -14,6 +12,7 @@ from .models import (
     EventType,
     Venue,
 )
+from .models.assets import VenueAvailability
 
 EVENT_BASE_LIST_DISPLAY = [
     "requires_confirmation",

@@ -4,8 +4,6 @@ from django.db import models
 from .assets import Asset
 from .events import Event
 
-
-
 # class BookingRequest(models.Model):
 #     class Status(models.TextChoices):
 #         PENDING = "P", "Pending"
@@ -75,5 +73,3 @@ class EventParticipantAsset(models.Model):
                 fields=["participant", "asset"], name="unique_participant_asset"
             )
         ]
-
-

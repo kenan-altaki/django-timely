@@ -1,8 +1,8 @@
+from recurrence.fields import RecurrenceField
+
 from django.core.exceptions import PermissionDenied
 from django.db import models
 from django.utils import timezone
-
-from recurrence.fields import RecurrenceField
 
 from .assets import Venue
 
@@ -245,31 +245,29 @@ class Event(EventBase):
             raise PermissionDenied("Cannot save a locked event")
 
         return super().save(*args, **kwargs)
-    
+
     @property
     def presenters(self):
         """Get all users with presenter role for this event."""
         from .bookings import EventParticipant
+
         return EventParticipant.objects.filter(
-            event=self, 
-            role=EventParticipant.Role.PRESENTER
+            event=self, role=EventParticipant.Role.PRESENTER
         )
-    
+
     @property
     def instructors(self):
         """Get all users with instructor role for this event."""
         from .bookings import EventParticipant
+
         return EventParticipant.objects.filter(
-            event=self, 
-            role=EventParticipant.Role.INSTRUCTOR
+            event=self, role=EventParticipant.Role.INSTRUCTOR
         )
-    
+
     @property
     def primary_presenter(self):
         """Get the first confirmed presenter for this event."""
-        presenter = self.presenters.filter(
-            status='confirmed'
-        ).first()
+        presenter = self.presenters.filter(status="confirmed").first()
         return presenter.user if presenter else None
 
     @classmethod

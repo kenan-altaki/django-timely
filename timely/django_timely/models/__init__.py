@@ -1,6 +1,14 @@
 import logging
 
-from .assets import Asset, AssetAvailability, AssetType, AssetGroup, Venue, VenueAvailability
+from .assets import (
+    Asset,
+    AssetAvailability,
+    AssetGroup,
+    AssetType,
+    Venue,
+    VenueAvailability,
+)
+
 # from .bookings import BookingRequest, EventParticipant, EventParticipantAsset
 from .bookings import EventParticipant, EventParticipantAsset
 from .events import Event, EventType

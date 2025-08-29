@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 
-from django.db import models
-
-from django.utils import timezone
 from recurrence.fields import RecurrenceField
+
+from django.db import models
+from django.utils import timezone
 
 
 @dataclass
@@ -32,6 +32,17 @@ class Availability(models.Model):
 
     class Meta:
         abstract = True
+
+    @classmethod
+    def availability_overlap(cls, *items):
+        for item in items:
+            assert hasattr(item, "availabilities"), (
+                f"{item} does not have an `availability` attribute"
+            )
+
+        # Get availability for each item
+        # Determine the overlap of all items
+        # Return list of all overlapping TimePeriods
 
 
 class AssetType(models.Model):
