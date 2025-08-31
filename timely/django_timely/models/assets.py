@@ -69,6 +69,51 @@ class Availability(models.Model):
         return monthrange(year, month)[1]
 
     @classmethod
+    def overlap_helper_function(cls, period1: "Availability", period2: "Availability"):
+        if (
+            (period1.start_time < period2.end_time)
+            and (period1.start_time > period2.start_time)
+        ) or (
+            (period1.end_time < period2.end_time)
+            and (period1.end_time > period2.start_time)
+        ):
+            return 0  # Overlap detected, continue as normal
+        elif period1.start_time > period2.end_time:
+            return 1  # Period 2 ends before Period 1 starts, skip and move on to next iteration
+        elif period1.end_time < period2.start_time:
+            return 2  # Period 1 ends before Period 2 starts, ignore all future iterations and break loop
+
+    @classmethod
+    def overlap_return(cls, a: "Availability", b: "Availability"):
+        return max(a.start_time, b.start_time), min(a.end_time, b.end_time)
+
+    @classmethod
+    def AND_Overlap(cls, *items):
+        for item in items:
+            assert hasattr(item, "availabilities"), (
+                f"{item} does not have an `availability` attribute."
+            )
+        item_list_length = len(items)
+        counter = 0
+        list_of_items = []
+
+        for each in items.availabilities:
+            pass
+
+        pass
+
+    @classmethod
+    def OR_Overlap(cls, *items):
+        for item in items:
+            assert hasattr(item, "availabilities"), (
+                f"{item} does not have an `availability` attribute."
+            )
+        item_list_length = len(items)
+        counter = 0
+
+        pass
+
+    @classmethod
     def availability_overlap(cls, *items):
         for item in items:
             assert hasattr(item, "availabilities"), (
@@ -77,18 +122,18 @@ class Availability(models.Model):
 
         # Get availability for each item
         item_list_length = len(items)
-        if item_list_length < 2:
-            pass  # Code for only one object
-        else:  # Implicitly asserted that item list has more than 1 object
-            pass
+        assert item_list_length > 1, (
+            "You need at least two objects."
+        )  # Asserted that item list has more than 1 object
 
-        avs = [_x.get_availability for _x in items]
+        new_list = []
 
-        for i in range(item_list_length):
-            pass
+        temp_start_time = models.TimeField()
+        temp_end_time = models.TimeField()
+        temp_avail_obj = Availability.objects.new()
 
         # Determine the overlap of all items
-        # Return list of all overlapping TimePeriods
+        return new_list
 
 
 class AssetType(models.Model):
