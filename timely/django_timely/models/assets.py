@@ -16,6 +16,9 @@ class TimePeriod:
 
     def __repr__(self):
         return f"{self.start_time} ==> {self.end_time}"
+    
+    # def split_data(self):
+    #     return [(self.start_time, "+"), (self.end_time, "-")]
 
 
 class Availability(models.Model):
@@ -103,15 +106,32 @@ class Availability(models.Model):
         pass
 
     @classmethod
-    def OR_Overlap(cls, *items):
-        for item in items:
-            assert hasattr(item, "availabilities"), (
-                f"{item} does not have an `availability` attribute."
-            )
-        item_list_length = len(items)
+    def OR_Overlap(cls, item):
+        assert hasattr(item, "availabilities"), (
+            f"{item} does not have an `availability` attribute."
+        )
+        availabilities = item.get_av_per_month()
         counter = 0
+        counter_history = 0
 
-        pass
+        starting_list = []
+        for availability in availabilities:
+            starting_list.append((availability.start_time,1))
+            starting_list.append((availability.end_time,-1))
+
+        starting_list.sort(key=lambda x: x[0])
+        final_list = []
+        temp_obj = Availability.objects.__new__()
+        for x in starting_list:
+            counter += x[1]
+            if counter_history == 0 and counter > 0:
+                temp_obj.start_time = x.start_time # This is the first starting time, record time stamp
+            if counter_history > 0 and counter == 0:
+                temp_obj.end_time = x.end_time # This is the last ending time, record time stamp
+                final_list.append(temp_obj) # Create new object and continue loop if more times exist
+            if counter < 0 or counter_history < 0:
+                print("Error, counter should not go below 0.")
+            counter_history = counter
 
     @classmethod
     def availability_overlap(cls, *items):
@@ -207,6 +227,39 @@ class Venue(models.Model):
         blank=True,
         help_text="Fixed assets located at this venue",
     )
+
+    def get_av_per_month(self, year, month):
+        days_in_month = self.det_final_day(year, month)
+        dtstart = timezone.datetime(year, month, 1, 0, 0, 0, 0)
+        dtend = timezone.datetime(year, month, days_in_month, 23, 59, 59, 999)
+
+        all_occurrences = []
+        for each in self.availabilities.all():
+            for x in each.recurrence_rule.between(
+                dtstart, dtend, dtstart=dtstart, inc=True
+            ):
+                all_occurrences.append(
+                    TimePeriod(
+                        start_time=x.replace(
+                            hour=each.start_time.hour,
+                            minute=each.start_time.minute,
+                            second=each.start_time.second,
+                        ),
+                        end_time=x.replace(
+                            hour=each.end_time.hour,
+                            minute=each.end_time.minute,
+                            second=each.end_time.second,
+                        ),
+                    )
+                )
+
+        all_occurrences.sort(key=lambda x: x.start_time)
+        return all_occurrences
+
+    def det_final_day(self, year, month):
+        from calendar import monthrange
+
+        return monthrange(year, month)[1]
 
     def __str__(self):
         return self.name
