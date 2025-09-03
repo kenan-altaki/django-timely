@@ -215,6 +215,39 @@ class Asset(models.Model):
     def __str__(self):
         return self.name
 
+    def get_av_per_month(self, year, month):
+        days_in_month = self.det_final_day(year, month)
+        dtstart = timezone.datetime(year, month, 1, 0, 0, 0, 0)
+        dtend = timezone.datetime(year, month, days_in_month, 23, 59, 59, 999)
+
+        all_occurrences: list[TimePeriod] = []
+        for each in self.availabilities.all():
+            for x in each.recurrence_rule.between(
+                dtstart, dtend, dtstart=dtstart, inc=True
+            ):
+                all_occurrences.append(
+                    TimePeriod(
+                        start_time=x.replace(
+                            hour=each.start_time.hour,
+                            minute=each.start_time.minute,
+                            second=each.start_time.second,
+                        ),
+                        end_time=x.replace(
+                            hour=each.end_time.hour,
+                            minute=each.end_time.minute,
+                            second=each.end_time.second,
+                        ),
+                    )
+                )
+
+        all_occurrences.sort(key=lambda x: x.start_time)
+        return all_occurrences
+
+    def det_final_day(self, year, month):
+        from calendar import monthrange
+
+        return monthrange(year, month)[1]
+
     @classmethod
     def populate_defaults(cls):
         defaults = {
