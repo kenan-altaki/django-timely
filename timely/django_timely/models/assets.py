@@ -16,7 +16,7 @@ class TimePeriod:
 
     def __repr__(self):
         return f"{self.start_time} ==> {self.end_time}"
-    
+
     # def split_data(self):
     #     return [(self.start_time, "+"), (self.end_time, "-")]
 
@@ -91,47 +91,80 @@ class Availability(models.Model):
         return max(a.start_time, b.start_time), min(a.end_time, b.end_time)
 
     @classmethod
-    def AND_Overlap(cls, *items):
+    def AND_Overlap(cls, *items, year, month):
         for item in items:
             assert hasattr(item, "availabilities"), (
                 f"{item} does not have an `availability` attribute."
             )
-        item_list_length = len(items)
-        counter = 0
-        list_of_items = []
-
-        for each in items.availabilities:
-            pass
-
-        pass
-
-    @classmethod
-    def OR_Overlap(cls, item):
-        assert hasattr(item, "availabilities"), (
-            f"{item} does not have an `availability` attribute."
-        )
-        availabilities = item.get_av_per_month()
         counter = 0
         counter_history = 0
-
         starting_list = []
-        for availability in availabilities:
-            starting_list.append((availability.start_time,1))
-            starting_list.append((availability.end_time,-1))
-
-        starting_list.sort(key=lambda x: x[0])
+        object_list = []
         final_list = []
-        temp_obj = Availability.objects.__new__()
-        for x in starting_list:
-            counter += x[1]
-            if counter_history == 0 and counter > 0:
-                temp_obj.start_time = x.start_time # This is the first starting time, record time stamp
-            if counter_history > 0 and counter == 0:
-                temp_obj.end_time = x.end_time # This is the last ending time, record time stamp
-                final_list.append(temp_obj) # Create new object and continue loop if more times exist
+
+        for each in items:
+            starting_list.extend(cls.OR_Overlap(each, year, month))
+        for obj in starting_list:
+            assert isinstance(obj, TimePeriod)
+            object_list.append((obj.start_time, 1))
+            object_list.append((obj.end_time, -1))
+
+        object_list.sort(key=lambda x: x[0])
+        list_length = len(items)
+
+        for instance, step in object_list:
+            counter += step
+            if counter_history < list_length and counter == list_length:
+                _start_time = instance
+            if counter_history == list_length and counter < list_length:
+                _end_time = instance
+                final_list.append(
+                    TimePeriod(start_time=_start_time, end_time=_end_time)
+                )
+                _start_time, _end_time = None, None
             if counter < 0 or counter_history < 0:
                 print("Error, counter should not go below 0.")
             counter_history = counter
+
+        return final_list
+
+    @classmethod
+    def OR_Overlap(cls, item: "Venue", year: int, month: int):
+        assert hasattr(item, "availabilities"), (
+            f"{item} does not have an `availability` attribute."
+        )
+        availabilities = item.get_av_per_month(year, month)
+        counter = 0
+        counter_history = 0
+
+        starting_list: list[tuple[timezone.datetime, int]] = []
+        for availability in availabilities:
+            assert isinstance(availability, TimePeriod)
+            starting_list.append((availability.start_time, 1))
+            starting_list.append((availability.end_time, -1))
+
+        starting_list.sort(key=lambda x: x[0])
+        final_list: list[TimePeriod] = []
+
+        _start_time, _end_time = None, None
+        for instance, step in starting_list:
+            counter += step
+            if counter_history == 0 and counter > 0:
+                _start_time = instance
+            if counter_history > 0 and counter == 0:
+                _end_time = instance
+                final_list.append(
+                    TimePeriod(start_time=_start_time, end_time=_end_time)
+                )
+                _start_time, _end_time = None, None
+            if counter < 0 or counter_history < 0:
+                print("Error, counter should not go below 0.")
+            counter_history = counter
+
+        # from pprint import pprint
+
+        # pprint(final_list)
+        return final_list
 
     @classmethod
     def availability_overlap(cls, *items):
@@ -233,7 +266,7 @@ class Venue(models.Model):
         dtstart = timezone.datetime(year, month, 1, 0, 0, 0, 0)
         dtend = timezone.datetime(year, month, days_in_month, 23, 59, 59, 999)
 
-        all_occurrences = []
+        all_occurrences: list[TimePeriod] = []
         for each in self.availabilities.all():
             for x in each.recurrence_rule.between(
                 dtstart, dtend, dtstart=dtstart, inc=True
