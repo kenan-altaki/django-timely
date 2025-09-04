@@ -2,11 +2,10 @@ import logging
 
 from .assets import (
     Asset,
-    AssetAvailability,
     AssetGroup,
     AssetType,
+    Availability,
     Venue,
-    VenueAvailability,
 )
 
 # from .bookings import BookingRequest, EventParticipant, EventParticipantAsset
@@ -28,14 +27,13 @@ try:
             Event,
             EventType,
             Asset,
-            AssetAvailability,
             AssetType,
             AssetGroup,
+            Availability,
             Venue,
             # BookingRequest,
             EventParticipant,
             EventParticipantAsset,
-            VenueAvailability,
         ]
         for _model in models_to_audit_log:
             _model_name = _model.__class__.__name__

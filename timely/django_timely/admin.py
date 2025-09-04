@@ -1,9 +1,10 @@
 from django.contrib import admin
+from django.forms import HiddenInput
 
 from .models import (
     Asset,
-    AssetAvailability,
     AssetGroup,
+    Availability,
     AssetType,
     Event,
     EventParticipant,
@@ -11,7 +12,6 @@ from .models import (
     EventType,
     Venue,
 )
-from .models.assets import VenueAvailability
 
 EVENT_BASE_LIST_DISPLAY = [
     "requires_confirmation",
@@ -38,17 +38,24 @@ class AssetTypeAdmin(admin.ModelAdmin):
     list_display = ["name", "is_active"]
 
 
-class AssetAvailabilityInline(admin.StackedInline):
-    model = AssetAvailability
+class AvailabilityInline(admin.StackedInline):
+    model = Availability
     extra = 0
+    list_display = ["start_time", "end_time"]
+
+    # def __init__(self, *args, **kwargs):
+    #     super(AvailabilityInline, self).__init__(*args, **kwargs)
+    #     if self.model.venue is not None:
+    #         self.fields["Asset"].widget = HiddenInput()
 
 
 @admin.register(Asset)
 class AssetAdmin(admin.ModelAdmin):
     list_display = ["name", "type", "is_active"]
     inlines = [
-        AssetAvailabilityInline,
+        AvailabilityInline,
     ]
+    inlines[0].fields = ["recurrence_rule", "start_time", "end_time"]
 
 
 @admin.register(AssetGroup)
@@ -66,13 +73,9 @@ class EventParticipantAssetAdmin(admin.ModelAdmin):
     pass
 
 
-class VenueAvailabilityInline(admin.StackedInline):
-    model = VenueAvailability
-    extra = 0
-
-
 @admin.register(Venue)
 class VenueAdmin(admin.ModelAdmin):
     inlines = [
-        VenueAvailabilityInline,
+        AvailabilityInline,
     ]
+    inlines[0].fields = ["recurrence_rule", "start_time", "end_time"]
