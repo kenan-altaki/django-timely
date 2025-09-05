@@ -24,7 +24,6 @@ class Resource(models.Model):
     name = models.CharField(max_length=128)
     is_active = models.BooleanField(default=True)
     type = models.ForeignKey(ResourceType, on_delete=models.RESTRICT)
-    children = models.ManyToManyField("self", related_name="parents")
 
     def get_availabilities_per_month(self, year: int, month: int):
         days_in_month = self.get_final_day_in_month(year, month)

@@ -1,8 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.db import models
 
-from .assets import Asset
 from .events import Event
+from .resources import Resource
 
 
 class EventParticipant(models.Model):
@@ -32,20 +32,20 @@ class EventParticipant(models.Model):
         default=Status.INVITED,
         help_text="The current status of this participant",
     )
-    assets = models.ManyToManyField(Asset, through="EventParticipantAsset")
+    resource = models.ManyToManyField(Resource, through="EventParticipantResource")
 
     def __str__(self):
         return f"{self.user} - {self.get_role_display()} for {self.event}"
 
 
-class EventParticipantAsset(models.Model):
+class EventParticipantResource(models.Model):
     participant = models.ForeignKey(EventParticipant, on_delete=models.RESTRICT)
-    asset = models.ForeignKey(Asset, on_delete=models.RESTRICT)
+    resource = models.ForeignKey(Resource, on_delete=models.RESTRICT)
     shared = models.BooleanField(default=False)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["participant", "asset"], name="unique_participant_asset"
+                fields=["participant", "resource"], name="unique_participant_resource"
             )
         ]

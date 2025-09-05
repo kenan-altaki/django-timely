@@ -4,7 +4,7 @@ from django.core.exceptions import PermissionDenied
 from django.db import models
 from django.utils import timezone
 
-from .assets import Venue
+from .resources import Resource
 
 
 class EventBase(models.Model):
@@ -228,14 +228,12 @@ class Event(EventBase):
     )
     "The date and time when the event will end."
 
-    venue = models.ForeignKey(
-        Venue,
-        null=True,
-        blank=True,
-        on_delete=models.RESTRICT,
-        help_text="Select the venue where this event will take place.",
+    resource = models.ManyToManyField(
+        Resource,
+        help_text="The resources used for this event.",
+        through="EventResource",
     )
-    "The venue where this event will take place."
+    "The resources used for this event."
 
     def __str__(self):
         return f"{self.name}: {self.start} -> {self.end}"
@@ -292,3 +290,15 @@ class Event(EventBase):
 
         objs = [cls(**kwargs) for kwargs in defaults]
         cls.objects.bulk_create(objs, ignore_conflicts=True)
+
+
+class EventResource(models.Model):
+    event = models.ForeignKey(Event, on_delete=models.RESTRICT)
+    resource = models.ForeignKey(Resource, on_delete=models.RESTRICT)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event", "resource"], name="unique_event_resource"
+            )
+        ]

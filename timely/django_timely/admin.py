@@ -1,16 +1,14 @@
 from django.contrib import admin
-from django.forms import HiddenInput
 
 from .models import (
-    Asset,
-    AssetGroup,
     Availability,
-    AssetType,
     Event,
     EventParticipant,
-    EventParticipantAsset,
+    EventParticipantResource,
     EventType,
-    Venue,
+    ResourceGroup,
+    Resource,
+    ResourceType,
 )
 
 EVENT_BASE_LIST_DISPLAY = [
@@ -30,11 +28,11 @@ class EventTypeAdmin(admin.ModelAdmin):
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
-    list_display = ["name", "type", "venue", *EVENT_BASE_LIST_DISPLAY]
+    list_display = ["name", "type", *EVENT_BASE_LIST_DISPLAY]
 
 
-@admin.register(AssetType)
-class AssetTypeAdmin(admin.ModelAdmin):
+@admin.register(ResourceType)
+class ResourceTypeAdmin(admin.ModelAdmin):
     list_display = ["name", "is_active"]
 
 
@@ -43,14 +41,9 @@ class AvailabilityInline(admin.StackedInline):
     extra = 0
     list_display = ["start_time", "end_time"]
 
-    # def __init__(self, *args, **kwargs):
-    #     super(AvailabilityInline, self).__init__(*args, **kwargs)
-    #     if self.model.venue is not None:
-    #         self.fields["Asset"].widget = HiddenInput()
 
-
-@admin.register(Asset)
-class AssetAdmin(admin.ModelAdmin):
+@admin.register(Resource)
+class ResourceAdmin(admin.ModelAdmin):
     list_display = ["name", "type", "is_active"]
     inlines = [
         AvailabilityInline,
@@ -58,8 +51,8 @@ class AssetAdmin(admin.ModelAdmin):
     inlines[0].fields = ["recurrence_rule", "start_time", "end_time"]
 
 
-@admin.register(AssetGroup)
-class AssetGroupAdmin(admin.ModelAdmin):
+@admin.register(ResourceGroup)
+class ResourceGroupAdmin(admin.ModelAdmin):
     pass
 
 
@@ -68,14 +61,8 @@ class EventParticipantAdmin(admin.ModelAdmin):
     pass
 
 
-@admin.register(EventParticipantAsset)
-class EventParticipantAssetAdmin(admin.ModelAdmin):
+@admin.register(EventParticipantResource)
+class EventParticipantResourceAdmin(admin.ModelAdmin):
     pass
 
 
-@admin.register(Venue)
-class VenueAdmin(admin.ModelAdmin):
-    inlines = [
-        AvailabilityInline,
-    ]
-    inlines[0].fields = ["recurrence_rule", "start_time", "end_time"]
