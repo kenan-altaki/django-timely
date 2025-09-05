@@ -14,19 +14,30 @@ class TimePeriod:
     def __str__(self):
         return f"{self.start_time} ==> {self.end_time}"
 
-    def __repr__(self):
-        return f"{self.start_time} ==> {self.end_time}"
 
-    # def split_data(self):
-    #     return [(self.start_time, "+"), (self.end_time, "-")]
+class ResourceType(models.Model):
+    name = models.CharField(max_length=128)
+    is_active = models.BooleanField(default=True)
 
 
-class ObjectWithAvailabilityMixin:
-    def get_av_per_month(self, year, month):
-        days_in_month = self.det_final_day(year, month)
+class Resource(models.Model):
+    name = models.CharField(max_length=128)
+    is_active = models.BooleanField(default=True)
+    type = models.ForeignKey(ResourceType, on_delete=models.RESTRICT)
+    children = models.ManyToManyField("self", related_name="parents")
+
+    def get_availabilities_per_month(self, year: int, month: int):
+        days_in_month = self.get_final_day_in_month(year, month)
         dtstart = timezone.datetime(year, month, 1, 0, 0, 0, 0)
         dtend = timezone.datetime(year, month, days_in_month, 23, 59, 59, 999)
 
+        return self.get_availability_for_period(dtstart, dtend)
+
+    def get_availability_for_period(
+        self,
+        dtstart: timezone.datetime,
+        dtend: timezone.datetime,
+    ):
         all_occurrences = []
         for each in self.availabilities.all():
             for x in each.recurrence_rule.between(
@@ -51,7 +62,7 @@ class ObjectWithAvailabilityMixin:
         return all_occurrences
 
     @classmethod
-    def det_final_day(cls, year, month):
+    def get_final_day_in_month(cls, year, month):
         from calendar import monthrange
 
         return monthrange(year, month)[1]
@@ -71,7 +82,7 @@ class ObjectWithAvailabilityMixin:
         else:
             month = p_month
 
-        availabilities = self.get_av_per_month(year, month)
+        availabilities = self.get_availabilities_per_month(year, month)
         counter = 0
         counter_history = 0
 
@@ -105,68 +116,9 @@ class ObjectWithAvailabilityMixin:
         pprint(final_list)
 
 
-class AssetType(models.Model):
-    name = models.CharField(max_length=128)
-    is_active = models.BooleanField(default=True)
-
-    def __str__(self):
-        return self.name
-
-    @classmethod
-    def populate_defaults(cls):
-        cls.objects.get_or_create(name="Horses")
-        cls.objects.get_or_create(name="Machines")
-        cls.objects.get_or_create(name="Saddles")
-        cls.objects.get_or_create(name="Bridles")
-        cls.objects.get_or_create(name="Clothing")
-        cls.objects.get_or_create(name="Grooming")
-        cls.objects.get_or_create(name="Training")
-
-
-class Asset(models.Model, ObjectWithAvailabilityMixin):
-    name = models.CharField(max_length=128)
-    type = models.ForeignKey(AssetType, on_delete=models.RESTRICT)
-    is_active = models.BooleanField(default=True)
-
-    def __str__(self):
-        return self.name
-
-    @classmethod
-    def populate_defaults(cls):
-        defaults = {
-            "Horses": ["Bella", "Dusty", "Pippin"],
-            "Machines": ["Horse walker", "Beamer"],
-            "Saddles": ["English saddle", "Western saddle", "Dressage saddle"],
-            "Bridles": ["Snaffle", "Double", "Bitless bridle"],
-            "Clothing": ["Helmet", "Jacket", "Breeches"],
-            "Grooming": ["Comb", "Brush", "Hoof pick"],
-            "Training": ["Lunge line", "Cone kit"],
-        }
-        for _type, _lst in defaults.items():
-            asset_type = AssetType.objects.get(name=_type)
-            for _name in _lst:
-                cls.objects.get_or_create(name=_name, type=asset_type)
-
-
-class AssetGroup(models.Model):
+class ResourceGroup(models.Model):
     name = models.CharField(max_length=100)
-    assets = models.ManyToManyField(Asset, related_name="asset_groups")
-
-    def __str__(self):
-        return self.name
-
-
-class Venue(models.Model, ObjectWithAvailabilityMixin):
-    name = models.CharField(max_length=128)
-    location = models.CharField(max_length=128, null=True, blank=True)
-    assets = models.ManyToManyField(
-        Asset,
-        blank=True,
-        help_text="Fixed assets located at this venue",
-    )
-
-    def __str__(self):
-        return self.name
+    resources = models.ManyToManyField(Resource, related_name="groups")
 
 
 class Availability(models.Model):
@@ -181,54 +133,12 @@ class Availability(models.Model):
     start_time = models.TimeField()
     end_time = models.TimeField()
 
-    venue = models.ForeignKey(
-        Venue,
+    resource = models.ForeignKey(
+        Resource,
         on_delete=models.RESTRICT,
         related_name="availabilities",
         related_query_name="availability",
-        null=True,
-        blank=True,
     )
-
-    asset = models.ForeignKey(
-        Asset,
-        on_delete=models.RESTRICT,
-        related_name="availabilities",
-        related_query_name="availability",
-        null=True,
-        blank=True,
-    )
-
-    @property
-    def get_parent(self):
-        if self.venue is not None:
-            if self.asset is not None:
-                raise Exception("Error, object cannot be both a venue and an asset.")
-            else:
-                return self.venue
-        elif self.asset is not None:
-            return self.asset
-        else:
-            raise Exception("Error, object is neither a venue nor an asset.")
-
-    @classmethod
-    def overlap_helper_function(cls, period1: "Availability", period2: "Availability"):
-        if (
-            (period1.start_time < period2.end_time)
-            and (period1.start_time > period2.start_time)
-        ) or (
-            (period1.end_time < period2.end_time)
-            and (period1.end_time > period2.start_time)
-        ):
-            return 0  # Overlap detected, continue as normal
-        elif period1.start_time > period2.end_time:
-            return 1  # Period 2 ends before Period 1 starts, skip and move on to next iteration
-        elif period1.end_time < period2.start_time:
-            return 2  # Period 1 ends before Period 2 starts, ignore all future iterations and break loop
-
-    @classmethod
-    def overlap_return(cls, a: "Availability", b: "Availability"):
-        return max(a.start_time, b.start_time), min(a.end_time, b.end_time)
 
     @classmethod
     def overlapping_availabilities(
