@@ -1,0 +1,38 @@
+#! /usr/bin/env bash
+
+EXCLUDE_MODELS="BaseModel,AbstractBaseSession,LogEntry,Session,AbstractUser,Permission,ContentType,UserSession,EmailConfirmation,EmailAddress,HistoryEntry,UserObjectPermissionAbstract,GroupObjectPermissionAbstract,AuditLog"
+EXCLUDE_APPS=("common" "experimentation" "dashboard")
+EXCLUDE_COLUMNS=("created_at,updated_at")
+OPTIONS="
+--arrow-shape crow \
+--color-code-deletions \
+--exclude-columns $EXCLUDE_COLUMNS \
+--group-models \
+--no-inheritance \
+--ordering in \
+--rankdir LR \
+--skip-checks \
+--theme django2018 \
+"
+
+cd timely
+
+for directory in */; do
+    [ -L "${directory%/}" ] && continue
+    [ ! -f "${directory}/models.py" ] && [ ! -d "${directory}/models" ] && continue
+    [[ "${EXCLUDE_APPS[@]}" =~ "${directory%/}" ]] && continue
+
+    if [ $# -eq 0 ] || [[ "${@}" =~ "${directory::-1}" ]]; then
+        echo "Generating db diagram for $directory ..."
+        ./manage.py graph_models \
+            "${directory%/}" \
+            $OPTIONS \
+            -o "${directory}db_diagram.png"
+    fi
+done
+
+echo "Generating db diagram for all apps ..."
+./manage.py graph_models \
+    --all-applications \
+    $OPTIONS \
+    -o "full_db_diagram.png"
