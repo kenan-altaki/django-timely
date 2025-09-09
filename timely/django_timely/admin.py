@@ -64,5 +64,3 @@ class EventParticipantAdmin(admin.ModelAdmin):
 @admin.register(EventParticipantResource)
 class EventParticipantResourceAdmin(admin.ModelAdmin):
     pass
-
-

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from pydantic import BaseModel
 
 from recurrence.fields import RecurrenceField
 
@@ -6,13 +6,20 @@ from django.db import models
 from django.utils import timezone
 
 
-@dataclass
-class TimePeriod:
-    start_time: timezone.datetime
-    end_time: timezone.datetime
+class TimePeriod(BaseModel):
+    start: timezone.datetime
+    end: timezone.datetime
+
+    def flatten(self, entry_list, reversed=False):
+        step = -1 if reversed else 1
+        result = []
+        for each in entry_list:
+            result.append((each.start, step))
+            result.append((each.end, -step))
+        return result
 
     def __str__(self):
-        return f"{self.start_time} ==> {self.end_time}"
+        return f"{self.start} ==> {self.end}"
 
 
 class ResourceType(models.Model):
@@ -24,6 +31,51 @@ class Resource(models.Model):
     name = models.CharField(max_length=128)
     is_active = models.BooleanField(default=True)
     type = models.ForeignKey(ResourceType, on_delete=models.RESTRICT)
+
+    def get_availability_for_time(
+        self, dtstart: timezone.datetime, dtend: timezone.datetime
+    ):
+        assert dtstart.tzinfo is not None or dtend.tzinfo is not None, (
+            "`dtstart` and `dtend` must have a valid timezone info."
+        )
+        total_availability = self.get_availability_for_period(
+            dtstart=dtstart, dtend=dtend
+        )
+        availability_flat_list = []
+        for availability in total_availability:
+            availability_flat_list.append((availability.start, 1))
+            availability_flat_list.append((availability.end, -1))
+
+        all_events = self.events.filter(start__gte=dtstart, start__lte=dtend)
+        for reservation in all_events:
+            availability_flat_list.append((reservation.start, -1))
+            availability_flat_list.append((reservation.end, 1))
+
+        availability_flat_list.sort(key=lambda x: (x[0], -x[1]))
+
+        counter = 0
+        counter_history = 0
+        final_list = []
+
+        _start_time, _end_time = None, None
+        for instance, step in availability_flat_list:
+            counter += step
+            if counter_history == 0 and counter > 0:
+                _start_time = instance
+            if counter_history > 0 and counter == 0:
+                _end_time = instance
+                if _end_time == _start_time:
+                    _start_time, _end_time = None, None
+                    continue
+                final_list.append(
+                    TimePeriod(start_time=_start_time, end_time=_end_time)
+                )
+                _start_time, _end_time = None, None
+            if counter < 0 or counter_history < 0:
+                print("Error, counter should not go below 0.")
+            counter_history = counter
+
+        return final_list
 
     def get_availabilities_per_month(self, year: int, month: int):
         days_in_month = self.get_final_day_in_month(year, month)
@@ -37,6 +89,10 @@ class Resource(models.Model):
         dtstart: timezone.datetime,
         dtend: timezone.datetime,
     ):
+        assert dtstart.tzinfo is not None or dtend.tzinfo is not None, (
+            "`dtstart` and `dtend` must have a valid timezone info."
+        )
+
         all_occurrences = []
         for each in self.availabilities.all():
             for x in each.recurrence_rule.between(
@@ -101,6 +157,8 @@ class Resource(models.Model):
                 _start_time = instance
             if counter_history > 0 and counter == 0:
                 _end_time = instance
+                if _end_time == _start_time:
+                    continue
                 final_list.append(
                     TimePeriod(start_time=_start_time, end_time=_end_time)
                 )
@@ -129,8 +187,8 @@ class Availability(models.Model):
         include_dtstart=False,
     )
 
-    start_time = models.TimeField()
-    end_time = models.TimeField()
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
 
     resource = models.ForeignKey(
         Resource,
@@ -138,6 +196,9 @@ class Availability(models.Model):
         related_name="availabilities",
         related_query_name="availability",
     )
+
+    def __str__(self):
+        return (self.start_time, self.end_time)
 
     @classmethod
     def overlapping_availabilities(
