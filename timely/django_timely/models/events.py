@@ -232,6 +232,8 @@ class Event(EventBase):
         Resource,
         help_text="The resources used for this event.",
         through="EventResource",
+        related_name="events",
+        related_query_name="event",
     )
     "The resources used for this event."
 

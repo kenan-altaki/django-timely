@@ -48,7 +48,7 @@ class ResourceAdmin(admin.ModelAdmin):
     inlines = [
         AvailabilityInline,
     ]
-    inlines[0].fields = ["recurrence_rule", "start_time", "end_time"]
+    inlines[0].fields = ["recurrence_rule", "start", "end"]
 
 
 @admin.register(ResourceGroup)
@@ -64,5 +64,3 @@ class EventParticipantAdmin(admin.ModelAdmin):
 @admin.register(EventParticipantResource)
 class EventParticipantResourceAdmin(admin.ModelAdmin):
     pass
-
-

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from pydantic import BaseModel
 
 from recurrence.fields import RecurrenceField
 
@@ -6,13 +6,21 @@ from django.db import models
 from django.utils import timezone
 
 
-@dataclass
-class TimePeriod:
-    start_time: timezone.datetime
-    end_time: timezone.datetime
+class TimePeriod(BaseModel):
+    start: timezone.datetime
+    end: timezone.datetime
+
+    @classmethod
+    def flatten(cls, *entry_list, reversed=False):
+        step = -1 if reversed else 1
+        result = []
+        for each in entry_list:
+            result.append((each.start, step))
+            result.append((each.end, -step))
+        return result
 
     def __str__(self):
-        return f"{self.start_time} ==> {self.end_time}"
+        return f"{self.start} ==> {self.end}"
 
 
 class ResourceType(models.Model):
@@ -24,6 +32,45 @@ class Resource(models.Model):
     name = models.CharField(max_length=128)
     is_active = models.BooleanField(default=True)
     type = models.ForeignKey(ResourceType, on_delete=models.RESTRICT)
+
+    def get_availability_for_time(
+        self, dtstart: timezone.datetime, dtend: timezone.datetime
+    ):
+        assert dtstart.tzinfo is not None or dtend.tzinfo is not None, (
+            "`dtstart` and `dtend` must have a valid timezone info."
+        )
+        total_availability = self.get_availability_for_period(
+            dtstart=dtstart, dtend=dtend
+        )
+        availability_flat_list = Resource.flatten(total_availability)
+
+        all_events = self.events.filter(start__gte=dtstart, start__lte=dtend)
+        availability_flat_list.extend(Resource.flatten(all_events, reversed=True))
+        availability_flat_list.sort(key=lambda x: (x[0], -x[1]))
+
+        counter = 0
+        counter_history = 0
+        final_list = []
+
+        _start_time, _end_time = None, None
+        for instance, step in availability_flat_list:
+            counter += step
+            if counter_history == 0 and counter > 0:
+                _start_time = instance
+            if counter_history > 0 and counter == 0:
+                _end_time = instance
+                if _end_time == _start_time:
+                    _start_time, _end_time = None, None
+                    continue
+                final_list.append(
+                    TimePeriod(start=_start_time, end=_end_time)
+                )
+                _start_time, _end_time = None, None
+            if counter < 0 or counter_history < 0:
+                print("Error, counter should not go below 0.")
+            counter_history = counter
+
+        return final_list
 
     def get_availabilities_per_month(self, year: int, month: int):
         days_in_month = self.get_final_day_in_month(year, month)
@@ -37,6 +84,10 @@ class Resource(models.Model):
         dtstart: timezone.datetime,
         dtend: timezone.datetime,
     ):
+        assert dtstart.tzinfo is not None or dtend.tzinfo is not None, (
+            "`dtstart` and `dtend` must have a valid timezone info."
+        )
+
         all_occurrences = []
         for each in self.availabilities.all():
             for x in each.recurrence_rule.between(
@@ -44,20 +95,20 @@ class Resource(models.Model):
             ):
                 all_occurrences.append(
                     TimePeriod(
-                        start_time=x.replace(
-                            hour=each.start_time.hour,
-                            minute=each.start_time.minute,
-                            second=each.start_time.second,
+                        start=x.replace(
+                            hour=each.start.hour,
+                            minute=each.start.minute,
+                            second=each.start.second,
                         ),
-                        end_time=x.replace(
-                            hour=each.end_time.hour,
-                            minute=each.end_time.minute,
-                            second=each.end_time.second,
+                        end=x.replace(
+                            hour=each.end.hour,
+                            minute=each.end.minute,
+                            second=each.end.second,
                         ),
                     )
                 )
 
-        all_occurrences.sort(key=lambda x: x.start_time)
+        all_occurrences.sort(key=lambda x: x.start)
         return all_occurrences
 
     @classmethod
@@ -85,11 +136,7 @@ class Resource(models.Model):
         counter = 0
         counter_history = 0
 
-        starting_list: list[tuple[timezone.datetime, int]] = []
-        for availability in availabilities:
-            assert isinstance(availability, TimePeriod)
-            starting_list.append((availability.start_time, 1))
-            starting_list.append((availability.end_time, -1))
+        starting_list: list[tuple[timezone.datetime, int]] = Resource.flatten(availabilities)
 
         starting_list.sort(key=lambda x: x[0])
         final_list: list[TimePeriod] = []
@@ -101,8 +148,10 @@ class Resource(models.Model):
                 _start_time = instance
             if counter_history > 0 and counter == 0:
                 _end_time = instance
+                if _end_time == _start_time:
+                    continue
                 final_list.append(
-                    TimePeriod(start_time=_start_time, end_time=_end_time)
+                    TimePeriod(start=_start_time, end=_end_time)
                 )
                 _start_time, _end_time = None, None
             if counter < 0 or counter_history < 0:
@@ -129,8 +178,8 @@ class Availability(models.Model):
         include_dtstart=False,
     )
 
-    start_time = models.TimeField()
-    end_time = models.TimeField()
+    start = models.DateTimeField()
+    end = models.DateTimeField()
 
     resource = models.ForeignKey(
         Resource,
@@ -138,6 +187,9 @@ class Availability(models.Model):
         related_name="availabilities",
         related_query_name="availability",
     )
+
+    def __str__(self):
+        return f"{self.start}, {self.end}"
 
     @classmethod
     def overlapping_availabilities(
@@ -166,10 +218,7 @@ class Availability(models.Model):
 
         for each in items:
             starting_list.extend(each.merge_availabilities(p_year=year, p_month=month))
-        for obj in starting_list:
-            assert isinstance(obj, TimePeriod)
-            object_list.append((obj.start_time, 1))
-            object_list.append((obj.end_time, -1))
+        object_list = Resource.flatten(starting_list)
 
         object_list.sort(key=lambda x: x[0])
         list_length = len(items)
@@ -181,7 +230,7 @@ class Availability(models.Model):
             if counter_history == list_length and counter < list_length:
                 _end_time = instance
                 final_list.append(
-                    TimePeriod(start_time=_start_time, end_time=_end_time)
+                    TimePeriod(start=_start_time, end=_end_time)
                 )
                 _start_time, _end_time = None, None
             if counter < 0 or counter_history < 0:
