@@ -30,6 +30,7 @@ classifiers = [
 dependencies = [
     "django>=5.2.4",
     "django-recurrence>=1.11.1",
+    "pydantic>=2.11.9",
 ]
 
 [project.urls]
